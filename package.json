@@ -1,0 +1,29 @@
+{
+  "name": "v8-perf-shield",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PaulGuo/v8-perf-shield.git"
+  },
+  "author": "Guokai (PaulGuo)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PaulGuo/v8-perf-shield/issues"
+  },
+  "homepage": "https://github.com/PaulGuo/v8-perf-shield#readme",
+  "devDependencies": {
+    "eslint-config-hfe": "^2.0.0"
+  },
+  "dependencies": {
+    "log4js": "^0.6.33",
+    "object-assign": "^4.0.1",
+    "pm25": "^0.143.6",
+    "usage": "^0.7.1",
+    "writefile": "^0.2.8"
+  }
+}
