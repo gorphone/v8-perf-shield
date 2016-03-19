@@ -6,6 +6,7 @@ var profiler = require('v8-profiler');
 var usage = require('usage');
 var writefile = require('writefile');
 var objectAssign = require('object-assign');
+var debug = require('debug')('v8-perf-shield');
 var log4js = require('log4js');
 var logger = log4js.getLogger();
 var pid = process.pid;
@@ -20,13 +21,18 @@ var takeSnapshotAndSave = function (callback) {
     var snapshot = profiler.takeSnapshot();
     var saveFilePath = path.join(logsPath, uuid + '.snapshot');
 
+    debug('takeSnapshotAndSave start');
+
     snapshot.export(function (err, result) {
         if (err) {
             return callback(err);
         }
 
+        debug('takeSnapshotAndSave write');
+
         writefile(saveFilePath, result, function () {
             snapshot.delete();
+            debug('takeSnapshotAndSave saved');
         });
     });
 };
@@ -36,27 +42,34 @@ var takeProfilerAndSave = function (callback, samplingTime) {
     var profile = profiler.startProfiling(uuid, true);
     var saveFilePath = path.join(logsPath, uuid + '.cpuprofile');
     var stopProfilingAndSave = function () {
+        debug('takeProfilerAndSave stop');
+        callback = callback || function () {};
         profile = profiler.stopProfiling();
         profile.export(function (err, result) {
             if (err) {
                 return callback(err);
             }
 
+            debug('takeProfilerAndSave write');
+
             writefile(saveFilePath, result, function () {
                 profile.delete();
+                callback(profile);
+                debug('takeProfilerAndSave saved');
             });
         });
     };
 
+    debug('takeProfilerAndSave start');
     setTimeout(stopProfilingAndSave, samplingTime * 1000);
 };
 
-var emergencyAction = function () {
+var emergencyAction = function (usageHistory) {
     logger.warn('emergencyAction done.');
 };
 
-var emergencyCondition = function (lastCpuUsage, currentCpuUsage, usageHistoryCache) {
-    if (lastCpuUsage > 50 && currentCpuUsage > 50 && !profilingPending) {
+var emergencyCondition = function (lastCpuUsage, currentCpuUsage, usageHistory) {
+    if (lastCpuUsage > 50 && currentCpuUsage > 50) {
         return true;
     }
 };
@@ -72,32 +85,44 @@ var shieldOptions = {
 };
 
 var cpuUsageLook = function () {
+    debug('cpuUsageLook executed');
+
     usage.lookup(pid, shieldOptions.cpuUsageOptions, function (err, result) {
         if (err) {
             logger.error('someError(s) occured in usage');
             return;
         }
 
-        lastCpuUsage = currentCpuUsage;
-        currentCpuUsage = result.cpu;
-
-        if (usageHistoryCache.length > shieldOptions.cacheMaxLimit) {
+        if (usageHistoryCache.length === shieldOptions.cacheMaxLimit) {
+            debug('usageHistoryCache reache the limits');
             usageHistoryCache.shift();
-            usageHistoryCache.push(currentCpuUsage);
         }
 
-        if (shieldOptions.emergencyCondition(lastCpuUsage, currentCpuUsage, usageHistoryCache)) {
-            profilingPending = true;
-            takeSnapshotAndSave();
+        lastCpuUsage = currentCpuUsage;
+        currentCpuUsage = result.cpu;
+        usageHistoryCache.push(currentCpuUsage);
 
-            if (Math.round(Math.random()) === 1) {
-                shieldOptions.emergencyAction();
-                profilingPending = false;
+        if (shieldOptions.emergencyCondition(lastCpuUsage, currentCpuUsage, usageHistoryCache)) {
+            debug('emergencyCondition true');
+
+            if (profilingPending === true) {
+                debug('profilingPending and return');
                 return;
             }
 
+            // if (Math.round(Math.random()) === 1) {
+            //     debug('emergencyAction enter and return');
+            //     shieldOptions.emergencyAction(usageHistoryCache);
+            //     profilingPending = false;
+            //     return;
+            // }
+
+            takeSnapshotAndSave();
+            profilingPending = true;
+
             takeProfilerAndSave(function () {
-                shieldOptions.emergencyAction();
+                debug('emergencyAction enter');
+                shieldOptions.emergencyAction(usageHistoryCache);
                 profilingPending = false;
             }, shieldOptions.samplingTime);
         }
