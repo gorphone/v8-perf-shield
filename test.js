@@ -5,7 +5,7 @@ var perfShield = require('./index');
 perfShield({
     cacheMaxLimit: 15,
     samplingTime: 15,
-    emergencyCondition: function (lastUsage, currentUsage, usageHistoryCache) {
+    emergencyCondition: function (lastUsage, currentUsage, usageHistory) {
         console.log(lastUsage, currentUsage);
 
         if (lastUsage.cpu > 5 && currentUsage.cpu > 5) {

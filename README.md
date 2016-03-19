@@ -16,7 +16,7 @@ perfShield({
     cacheMaxLimit: 100, // 最大历史缓存条数，超过则滚动
     usageOptions: { keepHistory: true },
 
-    emergencyCondition: function (lastUsage, currentUsage, usageHistoryCache) {
+    emergencyCondition: function (lastUsage, currentUsage, usageHistory) {
         if (lastUsage.cpu > 5 && currentUsage.cpu > 5) {
             return true;
         }
