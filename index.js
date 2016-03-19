@@ -11,10 +11,10 @@ var log4js = require('log4js');
 var logger = log4js.getLogger();
 var pid = process.pid;
 var logsPath = process.env.V8_PERF_SHIELD_LOG_PATH || process.cwd();
-var lastCpuUsage = 0;
-var currentCpuUsage = 0;
+var lastUsage = 0;
+var currentUsage = 0;
 var profilingPending = false;
-var usageHistoryCache = [];
+var usageHistory = [];
 
 var takeSnapshotAndSave = function (callback) {
     var uuid = os.hostname() + Date.now();
@@ -68,8 +68,8 @@ var emergencyAction = function (usageHistory) {
     logger.warn('emergencyAction done.');
 };
 
-var emergencyCondition = function (lastCpuUsage, currentCpuUsage, usageHistory) {
-    if (lastCpuUsage > 50 && currentCpuUsage > 50) {
+var emergencyCondition = function (lastUsage, currentUsage, usageHistory) {
+    if (lastUsage.cpu > 50 && currentUsage.cpu > 50) {
         return true;
     }
 };
@@ -79,7 +79,7 @@ var shieldOptions = {
     samplingTime: 60,
     flushTime: 3,
     cacheMaxLimit: 100,
-    cpuUsageOptions: { keepHistory: true },
+    usageOptions: { keepHistory: true },
     emergencyCondition: emergencyCondition,
     emergencyAction: emergencyAction
 };
@@ -87,32 +87,32 @@ var shieldOptions = {
 var cpuUsageLook = function () {
     debug('cpuUsageLook executed');
 
-    usage.lookup(pid, shieldOptions.cpuUsageOptions, function (err, result) {
+    usage.lookup(pid, shieldOptions.usageOptions, function (err, result) {
         if (err) {
             return logger.error('someError(s) occured in usage');
         }
 
-        if (usageHistoryCache.length === shieldOptions.cacheMaxLimit) {
-            debug('usageHistoryCache reache the limits');
-            usageHistoryCache.shift();
+        if (usageHistory.length === shieldOptions.cacheMaxLimit) {
+            debug('usageHistory reache the limits');
+            usageHistory.shift();
         }
 
         if (profilingPending === true) {
             return debug('profilingPending and return');
         }
 
-        lastCpuUsage = currentCpuUsage;
-        currentCpuUsage = result.cpu;
-        usageHistoryCache.push(currentCpuUsage);
+        lastUsage = currentUsage;
+        currentUsage = result;
+        usageHistory.push(currentUsage);
 
-        if (shieldOptions.emergencyCondition(lastCpuUsage, currentCpuUsage, usageHistoryCache)) {
+        if (shieldOptions.emergencyCondition(lastUsage, currentUsage, usageHistory)) {
             debug('emergencyCondition true');
             profilingPending = true;
             takeSnapshotAndSave();
 
             takeProfilerAndSave(function () {
                 debug('emergencyAction enter');
-                shieldOptions.emergencyAction(usageHistoryCache);
+                shieldOptions.emergencyAction(usageHistory);
                 profilingPending = false;
             }, shieldOptions.samplingTime);
         }
