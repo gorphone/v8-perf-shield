@@ -89,13 +89,16 @@ var cpuUsageLook = function () {
 
     usage.lookup(pid, shieldOptions.cpuUsageOptions, function (err, result) {
         if (err) {
-            logger.error('someError(s) occured in usage');
-            return;
+            return logger.error('someError(s) occured in usage');
         }
 
         if (usageHistoryCache.length === shieldOptions.cacheMaxLimit) {
             debug('usageHistoryCache reache the limits');
             usageHistoryCache.shift();
+        }
+
+        if (profilingPending === true) {
+            return debug('profilingPending and return');
         }
 
         lastCpuUsage = currentCpuUsage;
@@ -104,21 +107,8 @@ var cpuUsageLook = function () {
 
         if (shieldOptions.emergencyCondition(lastCpuUsage, currentCpuUsage, usageHistoryCache)) {
             debug('emergencyCondition true');
-
-            if (profilingPending === true) {
-                debug('profilingPending and return');
-                return;
-            }
-
-            // if (Math.round(Math.random()) === 1) {
-            //     debug('emergencyAction enter and return');
-            //     shieldOptions.emergencyAction(usageHistoryCache);
-            //     profilingPending = false;
-            //     return;
-            // }
-
-            takeSnapshotAndSave();
             profilingPending = true;
+            takeSnapshotAndSave();
 
             takeProfilerAndSave(function () {
                 debug('emergencyAction enter');

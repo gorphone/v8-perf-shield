@@ -3,10 +3,14 @@
 var perfShield = require('./index');
 
 perfShield({
-    cacheMaxLimit: 5,
-    samplingTime: 5,
+    cacheMaxLimit: 15,
+    samplingTime: 15,
     emergencyCondition: function (lastCpuUsage, currentCpuUsage, usageHistoryCache) {
-        return true;
+        console.log(lastCpuUsage, currentCpuUsage);
+
+        if (lastCpuUsage > 5 && currentCpuUsage > 5) {
+            return true;
+        }
     },
 
     emergencyAction: function (usageHistory) {
@@ -16,9 +20,11 @@ perfShield({
 });
 
 var profiler = require('v8-profiler');
-var profile = profiler.startProfiling('1', true);
 
 setTimeout(function () {
-    profile = profiler.stopProfiling();
-    // console.log(profile);
-}, 10000);
+    profiler.startProfiling('1', true);
+}, 5000);
+
+setTimeout(function () {
+    profiler.stopProfiling();
+}, 15000);
